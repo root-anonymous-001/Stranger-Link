@@ -1,0 +1,47 @@
+{
+  "name": "Message",
+  "type": "object",
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "description": "ID of the chat session"
+    },
+    "sender_email": {
+      "type": "string",
+      "description": "Email of the sender"
+    },
+    "sender_name": {
+      "type": "string",
+      "description": "Display name of the sender"
+    },
+    "content": {
+      "type": "string",
+      "description": "Message content"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "text",
+        "system"
+      ],
+      "default": "text"
+    },
+    "media_url": {
+      "type": "string",
+      "description": "URL of attached image or video"
+    },
+    "media_type": {
+      "type": "string",
+      "enum": [
+        "image",
+        "video"
+      ],
+      "description": "Type of media attached"
+    }
+  },
+  "required": [
+    "session_id",
+    "sender_email",
+    "content"
+  ]
+}

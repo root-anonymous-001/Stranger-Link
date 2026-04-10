@@ -1,0 +1,34 @@
+{
+  "name": "Post",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string"
+    },
+    "user_name": {
+      "type": "string"
+    },
+    "caption": {
+      "type": "string"
+    },
+    "image_url": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "post",
+        "short"
+      ],
+      "default": "post"
+    },
+    "likes_count": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "user_email",
+    "image_url"
+  ]
+}

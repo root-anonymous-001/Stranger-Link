@@ -1,0 +1,71 @@
+{
+  "name": "ChatSession",
+  "type": "object",
+  "properties": {
+    "user1_email": {
+      "type": "string",
+      "description": "Email of the first user"
+    },
+    "user1_name": {
+      "type": "string",
+      "description": "Display name of user 1"
+    },
+    "user2_email": {
+      "type": "string",
+      "description": "Email of the second user"
+    },
+    "user2_name": {
+      "type": "string",
+      "description": "Display name of user 2"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "waiting",
+        "active",
+        "ended"
+      ],
+      "default": "waiting",
+      "description": "Session status"
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "text",
+        "video"
+      ],
+      "default": "text",
+      "description": "Chat mode"
+    },
+    "gender_preference": {
+      "type": "string",
+      "enum": [
+        "male",
+        "female",
+        "any"
+      ],
+      "default": "any"
+    },
+    "user1_gender": {
+      "type": "string",
+      "enum": [
+        "male",
+        "female",
+        "other"
+      ]
+    },
+    "user2_gender": {
+      "type": "string",
+      "enum": [
+        "male",
+        "female",
+        "other"
+      ]
+    }
+  },
+  "required": [
+    "user1_email",
+    "status",
+    "mode"
+  ]
+}

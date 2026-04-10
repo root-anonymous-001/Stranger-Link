@@ -1,0 +1,98 @@
+import axios from 'axios';
+
+const API_URL = 'http://localhost:8000/api'; 
+
+const apiClient = axios.create({
+  baseURL: API_URL,
+});
+
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('access_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+const createEntityMethods = (entityName) => ({
+  filter: async (params, sort, limit) => {
+    try {
+      const { data } = await apiClient.get(`/${entityName}`, { params: { ...params, sort, limit } });
+      return data;
+    } catch (e) { return []; }
+  },
+  create: async (payload) => {
+    const { data } = await apiClient.post(`/${entityName}`, payload);
+    return data;
+  },
+  update: async (id, payload) => {
+    const { data } = await apiClient.put(`/${entityName}/${id}`, payload);
+    return data;
+  },
+  delete: async (id) => {
+    const { data } = await apiClient.delete(`/${entityName}/${id}`);
+    return data;
+  }
+});
+
+export const base44 = {
+  auth: {
+    isAuthenticated: async () => {
+      return !!localStorage.getItem('access_token');
+    },
+    login: async (identifier, password) => {
+      const { data } = await apiClient.post('/auth/login', { identifier, password });
+      localStorage.setItem('access_token', data.access_token);
+      return data.user;
+    },
+    register: async (payload) => {
+      const { data } = await apiClient.post('/auth/register', payload);
+      localStorage.setItem('access_token', data.access_token);
+      return data.user;
+    },
+    firebaseLogin: async (payload) => {
+      const { data } = await apiClient.post('/auth/firebase_login', payload);
+      localStorage.setItem('access_token', data.access_token);
+      return data.user;
+    },
+    me: async () => {
+      const { data } = await apiClient.get('/auth/me');
+      return data;
+    },
+    updateMe: async (payload) => {
+      const { data } = await apiClient.put('/auth/me', payload);
+      return data;
+    },
+    logout: (redirectUrl) => {
+      localStorage.removeItem('access_token');
+      if (redirectUrl) window.location.href = redirectUrl;
+      else window.location.href = '/';
+    },
+    redirectToLogin: (redirectUrl) => {
+      window.location.href = '/login' + (redirectUrl ? `?redirect=${encodeURIComponent(redirectUrl)}` : '');
+    }
+  },
+  
+  entities: {
+    ChatSession: createEntityMethods('chat-sessions'),
+    Message: createEntityMethods('messages'),
+    Notification: createEntityMethods('notifications'),
+    UserFollow: createEntityMethods('user-follows'),
+    Post: createEntityMethods('posts'),
+    ChatLike: createEntityMethods('chat-likes'),
+    User: createEntityMethods('users'),
+    VIPPayment: createEntityMethods('vip-payments'),
+  },
+  integrations: {
+    Core: {
+      UploadFile: async ({ file }) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        const { data } = await apiClient.post('/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        return data;
+      }
+    }
+  }
+};

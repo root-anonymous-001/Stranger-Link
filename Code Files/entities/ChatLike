@@ -1,0 +1,20 @@
+{
+  "name": "ChatLike",
+  "type": "object",
+  "properties": {
+    "liker_email": {
+      "type": "string"
+    },
+    "liked_email": {
+      "type": "string"
+    },
+    "session_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "liker_email",
+    "liked_email",
+    "session_id"
+  ]
+}

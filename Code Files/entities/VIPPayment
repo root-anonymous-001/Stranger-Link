@@ -1,0 +1,44 @@
+{
+  "name": "VIPPayment",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string"
+    },
+    "user_name": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "number"
+    },
+    "transaction_id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "rejected"
+      ],
+      "default": "pending"
+    },
+    "plan": {
+      "type": "string",
+      "enum": [
+        "monthly_199",
+        "discounted_69"
+      ],
+      "default": "monthly_199"
+    },
+    "months": {
+      "type": "number",
+      "default": 1
+    }
+  },
+  "required": [
+    "user_email",
+    "transaction_id",
+    "amount"
+  ]
+}
