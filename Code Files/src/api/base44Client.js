@@ -3,7 +3,7 @@ import axios from 'axios';
 // NAYA: Smart URL Logic. Agar local pe hai to 8000, warna Render server.
 const API_URL = window.location.hostname === 'localhost' 
   ? 'http://localhost:8000/api' 
-  : 'https://stranger-link-kfrl.onrender.com/api';
+  : 'https://stranger-link-kfr1.onrender.com/api';
 
 const apiClient = axios.create({
   baseURL: API_URL,
