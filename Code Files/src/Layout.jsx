@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
+import logo from "./assets/Logo.png";
 
 export default function Layout({ children, currentPageName }) {
   const { user, isAuthModalOpen, authMode, openAuthModal, closeAuthModal, checkAppState } = useAuth();
@@ -66,7 +67,7 @@ export default function Layout({ children, currentPageName }) {
                   <span className="text-sm font-medium">Back</span>
                 </button>
                 <Link to={createPageUrl("Home")} className="hidden md:flex items-center gap-2">
-                  <img src="Code Files\Logo.png" alt="StrangerLink Logo" className="logo w-12 h-12 object-contain drop-shadow-md" />
+                  <img src={logo} alt="StrangerLink Logo" className="logo w-12 h-12 object-contain drop-shadow-md" />
                   
                   <span className="text-lg font-bold tracking-tight">
                     <span className="gradient-text">Stranger</span>
@@ -76,7 +77,7 @@ export default function Layout({ children, currentPageName }) {
               </div>
             ) : (
               <Link to={createPageUrl("Home")} className="flex items-center gap-2">
-                <img src="Code Files\Logo.png" alt="StrangerLink Logo" className="logo w-12 h-12 object-contain drop-shadow-md" />
+                <img src={logo} alt="StrangerLink Logo" className="logo w-12 h-12 object-contain drop-shadow-md" />
                 <span className="text-lg font-bold tracking-tight">
                   <span className="gradient-text">Stranger</span>
                   <span className="text-white/90">Link</span>
