@@ -99,3 +99,8 @@ export const base44 = {
     }
   }
 };
+
+
+
+
+// Supabase string: postgresql://postgres.byaysrildtutmegvrtul:Root%40...%237431@aws-1-ap-south-1.pooler.supabase.com:6543/postgres
