@@ -12,6 +12,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 
+
+
+
+
+
 export default function Layout({ children, currentPageName }) {
   const { user, isAuthModalOpen, authMode, openAuthModal, closeAuthModal, checkAppState } = useAuth();
   const [unreadAlerts, setUnreadAlerts] = useState(0); 
@@ -52,6 +57,7 @@ export default function Layout({ children, currentPageName }) {
     { name: "Profile", page: "Profile", icon: User },
   ];
   return (
+  
     <div className="min-h-screen bg-background text-foreground transition-colors duration-500">
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[120px]" />
@@ -450,8 +456,14 @@ function AuthModal({ mode, setMode, onClose, onSuccess }) {
                         {mode === "login" ? "Sign up here" : "Log in"}
                     </button>
                 </p>
+
+
+
             </motion.div>
         </motion.div>
-    );
+
+        
+      );
+      
     
 }

@@ -1,7 +1,32 @@
+/* Step 1: Font ko define aur load karein */
+@font-face {
+  font-family: 'Rosemary';
+  font-style: normal;
+  font-weight: normal;
+  src: local('Rosemary'), 
+       url('./assets/Rosemary.woff') format('woff');
+}
+
+/* Step 2: Font ko pure page par apply karein */
+* {
+  font-family: 'Rosemary', sans-serif;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+.goBack{
+  border:2px solid #6366f1;
+  padding: 8px;
+  border-radius: 20px;
+  font-size: 14px;
+}
+.goBack:hover{
+  color: crimson;
+  transform: scale(1.1);
+  transition: 0.2s all ease-in-out;
+}
 
 @layer base {
   /* Default Theme: Midnight Noir (DARK BY DEFAULT) */
