@@ -22,10 +22,14 @@ export default function Layout({ children, currentPageName }) {
   const isInChat = currentPageName === "Chat" && !!sessionId;
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem("strangerlink_theme") || "theme-default";
+    // FIX: Scope theme strictly to the specific user's email if logged in.
+    let themeKey = "theme_guest";
+    if (user && user.email) themeKey = `theme_${user.email}`;
+
+    const savedTheme = localStorage.getItem(themeKey) || "theme-default";
     document.body.classList.remove("theme-default", "theme-ocean", "theme-sunset", "theme-forest", "theme-royal");
     document.body.classList.add(savedTheme);
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
@@ -264,14 +268,11 @@ function AuthModal({ mode, setMode, onClose, onSuccess }) {
                 await base44.auth.login(identifier, password);
                 onSuccess();
             } else {
-                // Register Flow
                 if (!showOtpInput) {
-                    // Step 1: Request OTP
                     await base44.auth.sendOtp(email, username);
                     setShowOtpInput(true);
                     setSuccessMsg("OTP has been sent to your email!");
                 } else {
-                    // Step 2: Verify & Create Account
                     if (!otp || otp.length < 6) throw new Error("Please enter a valid 6-digit OTP.");
                     await base44.auth.register({ email, username, full_name: fullName, dob, password, otp });
                     onSuccess();
@@ -401,7 +402,6 @@ function AuthModal({ mode, setMode, onClose, onSuccess }) {
                             </button>
                         </div>
 
-                        {/* NAYA: OTP Input Field */}
                         <AnimatePresence>
                             {showOtpInput && (
                                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="relative pt-2">

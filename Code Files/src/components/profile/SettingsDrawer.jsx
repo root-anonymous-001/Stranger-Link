@@ -29,7 +29,11 @@ export default function SettingsDrawer({ open, onClose, user, onUpdateUser, onVI
   const [showDeactivateDialog, setShowDeactivateDialog] = useState(false);
   const [deleteText, setDeleteText] = useState("");
   const [expandedSection, setExpandedSection] = useState(null);
-  const [currentTheme, setCurrentTheme] = useState(localStorage.getItem("strangerlink_theme") || "theme-default");
+  
+  const [currentTheme, setCurrentTheme] = useState(() => {
+     if (user && user.email) return localStorage.getItem(`theme_${user.email}`) || "theme-default";
+     return localStorage.getItem("theme_guest") || "theme-default";
+  });
   
   const [showBlockListModal, setShowBlockListModal] = useState(false);
   const [blockedUsers, setBlockedUsers] = useState([]);
@@ -64,7 +68,12 @@ export default function SettingsDrawer({ open, onClose, user, onUpdateUser, onVI
 
   const changeTheme = (themeId) => {
     setCurrentTheme(themeId);
-    localStorage.setItem('strangerlink_theme', themeId);
+    // FIX: Scope theme strictly to the specific user's email if logged in.
+    if (user && user.email) {
+      localStorage.setItem(`theme_${user.email}`, themeId);
+    } else {
+      localStorage.setItem('theme_guest', themeId);
+    }
     document.body.classList.remove('theme-default', 'theme-ocean', 'theme-sunset', 'theme-forest', 'theme-royal');
     document.body.classList.add(themeId);
   };
@@ -296,10 +305,6 @@ function ReportForm({ user, onDone }) {
     </div>
   );
 }
-
-
-
-
 
 
 
