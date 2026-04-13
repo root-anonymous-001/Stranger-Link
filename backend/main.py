@@ -13,9 +13,9 @@ import random
 import string
 import bcrypt 
 
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+# NAYA: HTTP Requests ke liye imports (Brevo API ke liye)
+import urllib.request
+import json
 
 import models
 from database import engine, get_db, SessionLocal
@@ -56,30 +56,34 @@ IST = timezone(timedelta(hours=5, minutes=30))
 def get_ist_now():
     return datetime.datetime.now(IST)
 
+# NAYA: Brevo API Email Sender (Render safe)
 def send_otp_email(receiver_email: str, otp: str):
-    sender_email = os.getenv("EMAIL_SENDER", "your_email@gmail.com")
-    sender_password = os.getenv("EMAIL_PASSWORD", "your_app_password")
+    api_key = os.getenv("BREVO_API_KEY")
+    sender_email = os.getenv("EMAIL_SENDER", "rootannymous469@gmail.com")
     
-    if sender_email == "your_email@gmail.com":
+    if not api_key:
         print(f"\n[DEV MODE] OTP for {receiver_email}: {otp}\n")
         return 
         
-    msg = MIMEMultipart()
-    msg['From'] = f"StrangerLink <{sender_email}>"
-    msg['To'] = receiver_email
-    msg['Subject'] = "Your StrangerLink Verification Code"
+    url = "https://api.brevo.com/v3/smtp/email"
+    payload = {
+        "sender": {"name": "StrangerLink", "email": sender_email},
+        "to": [{"email": receiver_email}],
+        "subject": "Your StrangerLink Verification Code",
+        "textContent": f"Hello!\n\nYour verification code is: {otp}\n\nThis code will expire in 10 minutes.\n\nWelcome to StrangerLink!"
+    }
     
-    body = f"Hello!\n\nYour verification code is: {otp}\n\nThis code will expire in 10 minutes.\n\nWelcome to StrangerLink!"
-    msg.attach(MIMEText(body, 'plain'))
+    data = json.dumps(payload).encode('utf-8')
+    req = urllib.request.Request(url, data=data, method="POST")
+    req.add_header("accept", "application/json")
+    req.add_header("api-key", api_key)
+    req.add_header("content-type", "application/json")
     
     try:
-        server = smtplib.SMTP('smtp.gmail.com', 587, timeout=10)
-        server.starttls()
-        server.login(sender_email, sender_password)
-        server.send_message(msg)
-        server.quit()
+        with urllib.request.urlopen(req) as response:
+            print(f"OTP Email sent successfully to {receiver_email}")
     except Exception as e:
-        print(f"Email Error: {e}")
+        print(f"Brevo Email Error: {e}")
 
 def delete_physical_file(file_url: str):
     if not file_url:
