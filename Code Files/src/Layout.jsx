@@ -1,6 +1,7 @@
 // @ts-nocheck
 import logo from "./assets/Logo.png";
 import React, { useState, useEffect } from "react";
+import { auth, googleProvider, signInWithPopup } from "@/lib/firebase";
 import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { base44 } from "@/api/base44Client";
@@ -261,9 +262,25 @@ function AuthModal({ mode, setMode, onClose, onSuccess }) {
         }
     };
 
-    const handleGoogleAuth = () => {
-        alert("Firebase Google Auth integration goes here! (Account Setup Phase complete)");
-    };
+   const handleGoogleAuth = async () => {
+    try {
+        const result = await signInWithPopup(auth, googleProvider);
+        const firebaseUser = result.user;
+        
+        // Hamare backend ko batana ki Google se banda aa gaya hai
+        const response = await base44.auth.firebaseLogin({
+            email: firebaseUser.email,
+            full_name: firebaseUser.displayName
+        });
+
+        if (response) {
+            onSuccess(); // Login modal band aur app start
+        }
+    } catch (error) {
+        console.error("Auth Error:", error);
+        alert("Google Login Failed! Check Console.");
+    }
+};
 
     return (
         <motion.div 
