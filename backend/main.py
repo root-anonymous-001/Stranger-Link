@@ -13,8 +13,16 @@ import random
 import string
 import bcrypt 
 
+# NAYA: Email bhejne ke liye imports
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
 import models
 from database import engine, get_db, SessionLocal
+
+# NAYA: Memory mein OTP store karne ke liye
+otp_store = {}
 
 def get_password_hash(password: str):
     salt = bcrypt.gensalt()
@@ -32,8 +40,6 @@ app = FastAPI(title="Stranger Link API")
 os.makedirs("uploads", exist_ok=True)
 app.mount("/static_uploads", StaticFiles(directory="uploads"), name="uploads")
 
-# NAYA: Bulletproof CORS setup for Vercel and Local testing
-# NAYA: Ekdum Pakka CORS setup
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -51,6 +57,34 @@ app.add_middleware(
 IST = timezone(timedelta(hours=5, minutes=30))
 def get_ist_now():
     return datetime.datetime.now(IST)
+
+# NAYA: Email Sender Function
+def send_otp_email(receiver_email: str, otp: str):
+    # Render Dashboard me add karne honge ye variables
+    sender_email = os.getenv("EMAIL_SENDER", "your_email@gmail.com")
+    sender_password = os.getenv("EMAIL_PASSWORD", "your_app_password")
+    
+    if sender_email == "your_email@gmail.com":
+        print(f"\n[DEV MODE] OTP for {receiver_email}: {otp}\n")
+        return # Skip sending email if not configured on Render
+        
+    msg = MIMEMultipart()
+    msg['From'] = f"StrangerLink <{sender_email}>"
+    msg['To'] = receiver_email
+    msg['Subject'] = "Your StrangerLink Verification Code"
+    
+    body = f"Hello!\n\nYour verification code is: {otp}\n\nThis code will expire in 10 minutes.\n\nWelcome to StrangerLink!"
+    msg.attach(MIMEText(body, 'plain'))
+    
+    try:
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(sender_email, sender_password)
+        server.send_message(msg)
+        server.quit()
+    except Exception as e:
+        print(f"Email Error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to send verification email. Please try again.")
 
 def delete_physical_file(file_url: str):
     if not file_url:
@@ -232,18 +266,61 @@ def login(payload: dict, db: Session = Depends(get_db)):
         
     return {"access_token": user.email, "user": user}
 
+# NAYA: Check uniqueness and send OTP
+@app.post("/api/auth/send_otp")
+def send_otp(payload: dict, db: Session = Depends(get_db)):
+    email = payload.get("email")
+    username = payload.get("username")
+    
+    if not email or not username:
+        raise HTTPException(status_code=400, detail="Email and Username required")
+        
+    # STRICT CHECKS
+    if db.query(models.User).filter(models.User.email == email).first():
+        raise HTTPException(status_code=400, detail="Email is already registered")
+    if db.query(models.User).filter(models.User.username == username).first():
+        raise HTTPException(status_code=400, detail="Username is already taken")
+        
+    # Generate OTP
+    otp = ''.join(random.choices(string.digits, k=6))
+    otp_store[email] = {
+        "otp": otp,
+        "expiry": get_ist_now() + timedelta(minutes=10)
+    }
+    
+    # Send Email
+    send_otp_email(email, otp)
+    return {"message": "OTP sent successfully"}
+
+# UPDATE: Check OTP before creating user
 @app.post("/api/auth/register")
 def register(payload: dict, db: Session = Depends(get_db)):
     email = payload.get("email")
     username = payload.get("username")
     password = payload.get("password")
+    otp = payload.get("otp")
     
-    if not email or not username or not password:
-        raise HTTPException(status_code=400, detail="Incomplete data")
+    if not email or not username or not password or not otp:
+        raise HTTPException(status_code=400, detail="Incomplete data. OTP missing.")
         
-    existing_user = db.query(models.User).filter((models.User.email == email) | (models.User.username == username)).first()
-    if existing_user:
-        raise HTTPException(status_code=400, detail="Email or username already exists")
+    # STRICT CHECKS (double check)
+    if db.query(models.User).filter(models.User.email == email).first():
+        raise HTTPException(status_code=400, detail="Email is already registered")
+    if db.query(models.User).filter(models.User.username == username).first():
+        raise HTTPException(status_code=400, detail="Username is already taken")
+        
+    # VERIFY OTP
+    stored_otp_data = otp_store.get(email)
+    if not stored_otp_data:
+        raise HTTPException(status_code=400, detail="OTP not requested or expired.")
+    if stored_otp_data["otp"] != otp:
+        raise HTTPException(status_code=400, detail="Invalid Verification Code.")
+    if get_ist_now() > stored_otp_data["expiry"]:
+        del otp_store[email]
+        raise HTTPException(status_code=400, detail="OTP has expired. Request a new one.")
+        
+    # Remove OTP after success
+    del otp_store[email]
         
     hashed_pw = get_password_hash(password)
     
@@ -285,6 +362,10 @@ def firebase_login(payload: dict, db: Session = Depends(get_db)):
          random_suffix = ''.join(random.choices(string.digits, k=4))
          new_username = f"{base_username}_{random_suffix}"
          
+         # Google Login me unique username fail na ho isliye loop chalaya
+         while db.query(models.User).filter(models.User.username == new_username).first():
+             new_username = f"{base_username}_{''.join(random.choices(string.digits, k=4))}"
+             
          user = models.User(
              email=email,
              username=new_username,
@@ -705,14 +786,12 @@ def share_post(post_id: int, payload: dict, db: Session = Depends(get_db)):
     db.commit()
     return {"status": "shared", "shares_count": post.shares_count}
 
-# NAYA: Dynamic Host Detection for Uploads
 @app.post("/api/upload")
 def upload_file(request: Request, file: UploadFile = File(...)):
     file_location = f"uploads/{file.filename}"
     with open(file_location, "wb+") as file_object:
         shutil.copyfileobj(file.file, file_object)
         
-    # Ye auto-detect karega ki tu localhost pe hai ya Render par
     base_url = str(request.base_url).rstrip("/")
     return {"file_url": f"{base_url}/uploads/{file.filename}"}
 
