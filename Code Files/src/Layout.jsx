@@ -66,7 +66,8 @@ export default function Layout({ children, currentPageName }) {
                   <span className="text-sm font-medium">Back</span>
                 </button>
                 <Link to={createPageUrl("Home")} className="hidden md:flex items-center gap-2">
-                  <img src="../Logo.png" alt="StrangerLink Logo" className="logo w-12 h-12 object-contain drop-shadow-md" />
+                  <img src="Code Files\Logo.png" alt="StrangerLink Logo" className="logo w-12 h-12 object-contain drop-shadow-md" />
+                  
                   <span className="text-lg font-bold tracking-tight">
                     <span className="gradient-text">Stranger</span>
                     <span className="text-white/90">Link</span>
@@ -75,7 +76,7 @@ export default function Layout({ children, currentPageName }) {
               </div>
             ) : (
               <Link to={createPageUrl("Home")} className="flex items-center gap-2">
-                <img src="../Logo.png" alt="StrangerLink Logo" className="logo w-12 h-12 object-contain drop-shadow-md" />
+                <img src="Code Files\Logo.png" alt="StrangerLink Logo" className="logo w-12 h-12 object-contain drop-shadow-md" />
                 <span className="text-lg font-bold tracking-tight">
                   <span className="gradient-text">Stranger</span>
                   <span className="text-white/90">Link</span>
