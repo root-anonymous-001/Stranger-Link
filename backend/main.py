@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Request
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import StreamingResponse
@@ -13,7 +13,6 @@ import random
 import string
 import bcrypt 
 
-# NAYA: Email bhejne ke liye imports
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -21,7 +20,6 @@ from email.mime.multipart import MIMEMultipart
 import models
 from database import engine, get_db, SessionLocal
 
-# NAYA: Memory mein OTP store karne ke liye
 otp_store = {}
 
 def get_password_hash(password: str):
@@ -58,15 +56,13 @@ IST = timezone(timedelta(hours=5, minutes=30))
 def get_ist_now():
     return datetime.datetime.now(IST)
 
-# NAYA: Email Sender Function
 def send_otp_email(receiver_email: str, otp: str):
-    # Render Dashboard me add karne honge ye variables
     sender_email = os.getenv("EMAIL_SENDER", "your_email@gmail.com")
     sender_password = os.getenv("EMAIL_PASSWORD", "your_app_password")
     
     if sender_email == "your_email@gmail.com":
         print(f"\n[DEV MODE] OTP for {receiver_email}: {otp}\n")
-        return # Skip sending email if not configured on Render
+        return 
         
     msg = MIMEMultipart()
     msg['From'] = f"StrangerLink <{sender_email}>"
@@ -77,14 +73,13 @@ def send_otp_email(receiver_email: str, otp: str):
     msg.attach(MIMEText(body, 'plain'))
     
     try:
-        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server = smtplib.SMTP('smtp.gmail.com', 587, timeout=10)
         server.starttls()
         server.login(sender_email, sender_password)
         server.send_message(msg)
         server.quit()
     except Exception as e:
         print(f"Email Error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to send verification email. Please try again.")
 
 def delete_physical_file(file_url: str):
     if not file_url:
@@ -120,8 +115,6 @@ def perform_hard_delete(db: Session, email: str):
     db.query(models.User).filter(models.User.email == email).delete()
     db.commit()
 
-
-# ================= AUTO-CLEANUP & EXPIRY JOBS =================
 def run_background_tasks():
     db = SessionLocal()
     try:
@@ -185,8 +178,6 @@ async def start_cron_job():
 async def startup_event():
     asyncio.create_task(start_cron_job())
 
-# ===============================================================
-
 def send_bytes_range_requests(file_path: str, start: int, end: int, chunk_size: int = 100 * 1024 * 1024):
     with open(file_path, "rb") as f:
         f.seek(start)
@@ -244,8 +235,6 @@ def get_current_user(request: Request, db: Session = Depends(get_db)):
     if not user: raise HTTPException(status_code=401, detail="User not found")
     return user
 
-# ================= AUTH & USER ROUTES =================
-
 @app.post("/api/auth/login")
 def login(payload: dict, db: Session = Depends(get_db)):
     identifier = payload.get("identifier") 
@@ -266,33 +255,29 @@ def login(payload: dict, db: Session = Depends(get_db)):
         
     return {"access_token": user.email, "user": user}
 
-# NAYA: Check uniqueness and send OTP
 @app.post("/api/auth/send_otp")
-def send_otp(payload: dict, db: Session = Depends(get_db)):
+def send_otp(payload: dict, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     email = payload.get("email")
     username = payload.get("username")
     
     if not email or not username:
         raise HTTPException(status_code=400, detail="Email and Username required")
         
-    # STRICT CHECKS
     if db.query(models.User).filter(models.User.email == email).first():
         raise HTTPException(status_code=400, detail="Email is already registered")
     if db.query(models.User).filter(models.User.username == username).first():
         raise HTTPException(status_code=400, detail="Username is already taken")
         
-    # Generate OTP
     otp = ''.join(random.choices(string.digits, k=6))
     otp_store[email] = {
         "otp": otp,
         "expiry": get_ist_now() + timedelta(minutes=10)
     }
     
-    # Send Email
-    send_otp_email(email, otp)
+    # Background task for sending email to prevent blocking
+    background_tasks.add_task(send_otp_email, email, otp)
     return {"message": "OTP sent successfully"}
 
-# UPDATE: Check OTP before creating user
 @app.post("/api/auth/register")
 def register(payload: dict, db: Session = Depends(get_db)):
     email = payload.get("email")
@@ -303,13 +288,11 @@ def register(payload: dict, db: Session = Depends(get_db)):
     if not email or not username or not password or not otp:
         raise HTTPException(status_code=400, detail="Incomplete data. OTP missing.")
         
-    # STRICT CHECKS (double check)
     if db.query(models.User).filter(models.User.email == email).first():
         raise HTTPException(status_code=400, detail="Email is already registered")
     if db.query(models.User).filter(models.User.username == username).first():
         raise HTTPException(status_code=400, detail="Username is already taken")
         
-    # VERIFY OTP
     stored_otp_data = otp_store.get(email)
     if not stored_otp_data:
         raise HTTPException(status_code=400, detail="OTP not requested or expired.")
@@ -319,7 +302,6 @@ def register(payload: dict, db: Session = Depends(get_db)):
         del otp_store[email]
         raise HTTPException(status_code=400, detail="OTP has expired. Request a new one.")
         
-    # Remove OTP after success
     del otp_store[email]
         
     hashed_pw = get_password_hash(password)
@@ -362,7 +344,6 @@ def firebase_login(payload: dict, db: Session = Depends(get_db)):
          random_suffix = ''.join(random.choices(string.digits, k=4))
          new_username = f"{base_username}_{random_suffix}"
          
-         # Google Login me unique username fail na ho isliye loop chalaya
          while db.query(models.User).filter(models.User.username == new_username).first():
              new_username = f"{base_username}_{''.join(random.choices(string.digits, k=4))}"
              
@@ -421,7 +402,6 @@ def update_user_by_id(id: int, payload: dict, db: Session = Depends(get_db)):
         db.commit()
     return user
 
-# ================= VIP PAYMENT VERIFICATION =================
 @app.post("/api/vip-payments")
 def create_vip_payment(payload: dict, db: Session = Depends(get_db)):
     user_email = payload.get("user_email")
@@ -444,7 +424,6 @@ def create_vip_payment(payload: dict, db: Session = Depends(get_db)):
     db.commit()
     return {"status": "success", "vip_expiry": user.vip_expiry}
 
-# ================= CHAT SESSIONS & MESSAGES =================
 @app.get("/api/chat-sessions")
 def get_chat_sessions(id: int = None, status: str = None, mode: str = None, db: Session = Depends(get_db)):
     query = db.query(models.ChatSession)
@@ -493,7 +472,6 @@ def update_message(id: int, payload: dict, db: Session = Depends(get_db)):
         db.refresh(msg)
     return msg
 
-# ================= NOTIFICATIONS =================
 @app.get("/api/notifications")
 def get_notifications(user_email: str = None, db: Session = Depends(get_db)):
     query = db.query(models.Notification)
@@ -530,7 +508,6 @@ def delete_all_notifications(user_email: str, db: Session = Depends(get_db)):
     db.commit()
     return {"status": "all deleted"}
 
-# ================= FOLLOW SYSTEM =================
 @app.get("/api/user-follows")
 def get_user_follows(follower_email: str = None, following_email: str = None, status: str = None, db: Session = Depends(get_db)):
     query = db.query(models.UserFollow)
@@ -619,7 +596,6 @@ def delete_follower(my_email: str, follower_email: str, remove_following: str = 
     db.commit()
     return {"status": "deleted"}
 
-# ================= UPLOAD, POSTS, LIKES & COMMENTS =================
 @app.get("/api/posts")
 def get_posts(user_email: str = None, db: Session = Depends(get_db)):
     query = db.query(models.Post)
