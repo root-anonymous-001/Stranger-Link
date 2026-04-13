@@ -1,4 +1,5 @@
 // @ts-nocheck
+import logo from "./assets/Logo.png";
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -9,7 +10,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
-import logo from "./assets/Logo.png";
 
 export default function Layout({ children, currentPageName }) {
   const { user, isAuthModalOpen, authMode, openAuthModal, closeAuthModal, checkAppState } = useAuth();

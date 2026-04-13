@@ -7,6 +7,7 @@ import StatsBar from "../components/home/StatsBar";
 import PullToRefresh from "../components/ui/PullToRefresh";
 import { Button } from "@/components/ui/button";
 
+
 export default function Home() {
   const { user, checkAppState, openAuthModal } = useAuth();
   const [refreshKey, setRefreshKey] = useState(0);
