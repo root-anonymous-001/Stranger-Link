@@ -280,7 +280,7 @@ function AuthModal({ mode, setMode, onClose, onSuccess }) {
                 </button>
 
                 <div className="text-center mb-6">
-                    <img src="/Logo.png" alt="StrangerLink Logo" className="logo w-14 h-14 object-contain mx-auto mb-3 drop-shadow-md" />
+                    <img src={logo} alt="StrangerLink Logo" className="logo w-14 h-14 object-contain mx-auto mb-3 drop-shadow-md" />
                     <h2 className="text-2xl font-bold text-white">{mode === "login" ? "Welcome Back" : "Join StrangerLink"}</h2>
                     <p className="text-white/40 text-xs mt-1">Connect with the world, anonymously.</p>
                 </div>
