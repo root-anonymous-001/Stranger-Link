@@ -238,13 +238,25 @@ function AuthModal({ mode, setMode, onClose, onSuccess }) {
     const [fullName, setFullName] = useState("");
     const [dob, setDob] = useState("");
     
+    const [otp, setOtp] = useState("");
+    const [showOtpInput, setShowOtpInput] = useState(false);
+    const [successMsg, setSuccessMsg] = useState("");
+
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState("");
 
+    const resetForm = () => {
+      setErrorMsg("");
+      setSuccessMsg("");
+      setShowOtpInput(false);
+      setOtp("");
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setErrorMsg("");
+        setSuccessMsg("");
         setLoading(true);
 
         try {
@@ -252,8 +264,18 @@ function AuthModal({ mode, setMode, onClose, onSuccess }) {
                 await base44.auth.login(identifier, password);
                 onSuccess();
             } else {
-                await base44.auth.register({ email, username, full_name: fullName, dob, password });
-                onSuccess();
+                // Register Flow
+                if (!showOtpInput) {
+                    // Step 1: Request OTP
+                    await base44.auth.sendOtp(email, username);
+                    setShowOtpInput(true);
+                    setSuccessMsg("OTP has been sent to your email!");
+                } else {
+                    // Step 2: Verify & Create Account
+                    if (!otp || otp.length < 6) throw new Error("Please enter a valid 6-digit OTP.");
+                    await base44.auth.register({ email, username, full_name: fullName, dob, password, otp });
+                    onSuccess();
+                }
             }
         } catch (err) {
             setErrorMsg(err.response?.data?.detail || err.message || "Something went wrong.");
@@ -267,15 +289,12 @@ function AuthModal({ mode, setMode, onClose, onSuccess }) {
         const result = await signInWithPopup(auth, googleProvider);
         const firebaseUser = result.user;
         
-        // Hamare backend ko batana ki Google se banda aa gaya hai
         const response = await base44.auth.firebaseLogin({
             email: firebaseUser.email,
             full_name: firebaseUser.displayName
         });
 
-        if (response) {
-            onSuccess(); // Login modal band aur app start
-        }
+        if (response) onSuccess(); 
     } catch (error) {
         console.error("Auth Error:", error);
         alert("Google Login Failed! Check Console.");
@@ -307,6 +326,11 @@ function AuthModal({ mode, setMode, onClose, onSuccess }) {
                         <p className="text-red-400 text-xs font-semibold">{errorMsg}</p>
                     </div>
                 )}
+                {successMsg && (
+                    <div className="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-center">
+                        <p className="text-emerald-400 text-xs font-semibold">{successMsg}</p>
+                    </div>
+                )}
 
                 <AnimatePresence mode="wait">
                     <motion.form 
@@ -333,29 +357,29 @@ function AuthModal({ mode, setMode, onClose, onSuccess }) {
                                 <div className="relative">
                                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Mail className="h-4 w-4 text-white/30" /></div>
                                     <input 
-                                        type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email Address"
-                                        className="w-full pl-11 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+                                        type="email" required readOnly={showOtpInput} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email Address"
+                                        className={`w-full pl-11 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all ${showOtpInput ? "opacity-50 cursor-not-allowed" : ""}`}
                                     />
                                 </div>
                                 <div className="relative">
                                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><User className="h-4 w-4 text-white/30" /></div>
                                     <input 
-                                        type="text" required value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Unique Username"
-                                        className="w-full pl-11 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+                                        type="text" required readOnly={showOtpInput} value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Unique Username"
+                                        className={`w-full pl-11 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all ${showOtpInput ? "opacity-50 cursor-not-allowed" : ""}`}
                                     />
                                 </div>
                                 <div className="relative">
                                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><User className="h-4 w-4 text-white/30" /></div>
                                     <input 
-                                        type="text" required value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Display Name"
-                                        className="w-full pl-11 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+                                        type="text" required readOnly={showOtpInput} value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Display Name"
+                                        className={`w-full pl-11 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all ${showOtpInput ? "opacity-50 cursor-not-allowed" : ""}`}
                                     />
                                 </div>
                                 <div className="relative">
                                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Calendar className="h-4 w-4 text-white/30" /></div>
                                     <input 
-                                        type="date" required value={dob} onChange={(e) => setDob(e.target.value)}
-                                        className="w-full pl-11 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+                                        type="date" required readOnly={showOtpInput} value={dob} onChange={(e) => setDob(e.target.value)}
+                                        className={`w-full pl-11 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all ${showOtpInput ? "opacity-50 cursor-not-allowed" : ""}`}
                                         style={{ colorScheme: "dark" }}
                                     />
                                 </div>
@@ -365,8 +389,8 @@ function AuthModal({ mode, setMode, onClose, onSuccess }) {
                         <div className="relative">
                             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><KeyRound className="h-4 w-4 text-white/30" /></div>
                             <input 
-                                type={showPassword ? "text" : "password"} required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password"
-                                className="w-full pl-11 pr-12 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+                                type={showPassword ? "text" : "password"} required readOnly={showOtpInput} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password"
+                                className={`w-full pl-11 pr-12 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all ${showOtpInput ? "opacity-50 cursor-not-allowed" : ""}`}
                             />
                             <button 
                                 type="button" 
@@ -377,11 +401,27 @@ function AuthModal({ mode, setMode, onClose, onSuccess }) {
                             </button>
                         </div>
 
+                        {/* NAYA: OTP Input Field */}
+                        <AnimatePresence>
+                            {showOtpInput && (
+                                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="relative pt-2">
+                                    <p className="text-xs text-indigo-300 font-semibold mb-2">Check your email for the 6-digit code</p>
+                                    <input 
+                                        type="text" required value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="Enter OTP (e.g. 123456)"
+                                        className="w-full text-center tracking-widest text-xl font-bold py-3 bg-indigo-500/10 border border-indigo-500/30 rounded-xl text-white placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+                                        maxLength={6}
+                                    />
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
                         <Button 
                             type="submit" disabled={loading}
                             className="w-full h-12 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-bold shadow-lg shadow-purple-500/25 active:scale-95 transition-all"
                         >
-                            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (mode === "login" ? "Log In" : "Create Account")}
+                            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 
+                              (mode === "login" ? "Log In" : 
+                              (!showOtpInput ? "Send Verification OTP" : "Verify & Create Account"))}
                         </Button>
                     </motion.form>
                 </AnimatePresence>
@@ -404,7 +444,7 @@ function AuthModal({ mode, setMode, onClose, onSuccess }) {
                 <p className="text-center text-sm text-white/50 mt-6">
                     {mode === "login" ? "Don't have an account? " : "Already have an account? "}
                     <button 
-                        onClick={() => setMode(mode === "login" ? "register" : "login")} 
+                        onClick={() => { setMode(mode === "login" ? "register" : "login"); resetForm(); }} 
                         className="text-indigo-400 font-bold hover:underline"
                     >
                         {mode === "login" ? "Sign up here" : "Log in"}

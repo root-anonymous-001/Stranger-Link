@@ -48,6 +48,11 @@ export const base44 = {
       localStorage.setItem('access_token', data.access_token);
       return data.user;
     },
+    // NAYA: OTP Send karne ka function
+    sendOtp: async (email, username) => {
+      const { data } = await apiClient.post('/auth/send_otp', { email, username });
+      return data;
+    },
     register: async (payload) => {
       const { data } = await apiClient.post('/auth/register', payload);
       localStorage.setItem('access_token', data.access_token);
@@ -66,7 +71,6 @@ export const base44 = {
       const { data } = await apiClient.put('/auth/me', payload);
       return data;
     },
-    // NAYA: Delete aur Deactivate ka function
     deleteAccount: async (mode = 'deactivate') => {
       const { data } = await apiClient.delete(`/auth/me?mode=${mode}`);
       return data;
@@ -89,7 +93,7 @@ export const base44 = {
     Post: createEntityMethods('posts'),
     ChatLike: createEntityMethods('chat-likes'),
     User: createEntityMethods('users'),
-    UserBlock: createEntityMethods('blocks'), // NAYA: UserBlock entities map ho gayi
+    UserBlock: createEntityMethods('blocks'), 
     VIPPayment: createEntityMethods('vip-payments'),
   },
   integrations: {
