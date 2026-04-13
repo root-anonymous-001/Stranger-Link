@@ -33,13 +33,15 @@ os.makedirs("uploads", exist_ok=True)
 app.mount("/static_uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # NAYA: Bulletproof CORS setup for Vercel and Local testing
+# NAYA: Ekdum Pakka CORS setup
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "http://localhost:5173"
+        "http://localhost:5173",
+        "https://stranger-link-one.vercel.app", # Tera asli Vercel URL
     ],
-    allow_origin_regex=r"https://.*\.vercel\.app", # Allows any Vercel deployment URL dynamically
+    allow_origin_regex=r"https://.*\.vercel\.app", 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
