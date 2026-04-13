@@ -7,10 +7,27 @@ import { useNavigate } from "react-router-dom";
 
 const formatLocalTime = (dateStr) => {
   if (!dateStr) return "";
-  const dateObj = new Date(dateStr.endsWith("Z") ? dateStr : dateStr + "Z");
-  return dateObj.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  try {
+    // Backend se aane wale time mein agar space hai toh usko 'T' se replace karo (Valid ISO format ke liye)
+    const cleanStr = dateStr.replace(" ", "T");
+    
+    // "Z" hata diya kyunki backend already IST bhej raha hai
+    const dateObj = new Date(cleanStr);
+    
+    // Agar parsing fail ho jaye toh "Invalid Date" ki jagah fallback
+    if (isNaN(dateObj.getTime())) return "Just now"; 
+    
+    // Forcefully IST mein 12-hour format (AM/PM) show karega
+    return dateObj.toLocaleTimeString('en-IN', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true,
+      timeZone: 'Asia/Kolkata' 
+    });
+  } catch (e) {
+    return "";
+  }
 };
-
 export default function ChatMessages({ messages, currentUserEmail, onUpdateMessage, onImageClick, onUnsend }) {
   const bottomRef = useRef(null);
   const [selectedMsgId, setSelectedMsgId] = useState(null);
