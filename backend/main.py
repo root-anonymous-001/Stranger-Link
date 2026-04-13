@@ -11,12 +11,11 @@ import asyncio
 import threading
 import random
 import string
-import bcrypt # NAYA: Direct bcrypt instead of passlib
+import bcrypt 
 
 import models
 from database import engine, get_db, SessionLocal
 
-# NAYA: Setup Password Hashing with direct bcrypt
 def get_password_hash(password: str):
     salt = bcrypt.gensalt()
     return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
@@ -33,20 +32,23 @@ app = FastAPI(title="Stranger Link API")
 os.makedirs("uploads", exist_ok=True)
 app.mount("/static_uploads", StaticFiles(directory="uploads"), name="uploads")
 
+# NAYA: Bulletproof CORS setup for Vercel and Local testing
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:5173"
+    ],
+    allow_origin_regex=r"https://.*\.vercel\.app", # Allows any Vercel deployment URL dynamically
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# HELPER: Get IST Time
 IST = timezone(timedelta(hours=5, minutes=30))
 def get_ist_now():
     return datetime.datetime.now(IST)
 
-# HELPER: Physically Delete Files from Server
 def delete_physical_file(file_url: str):
     if not file_url:
         return
@@ -59,20 +61,16 @@ def delete_physical_file(file_url: str):
     except Exception as e:
         print(f"Error deleting file: {e}")
 
-# HELPER: Absolute Deletion Function (HARD DELETE)
 def perform_hard_delete(db: Session, email: str):
-    # 1. Physical Media Clear
     posts = db.query(models.Post).filter(models.Post.user_email == email).all()
     for p in posts:
         delete_physical_file(p.image_url)
     
-    # Optional: Delete chat media user sent
     messages = db.query(models.Message).filter(models.Message.sender_email == email).all()
     for m in messages:
         if m.media_url and "uploads/" in m.media_url and m.type != "media":
             delete_physical_file(m.media_url)
 
-    # 2. Wipe ALL records
     db.query(models.Post).filter(models.Post.user_email == email).delete()
     db.query(models.PostLike).filter(models.PostLike.user_email == email).delete()
     db.query(models.Comment).filter(models.Comment.user_email == email).delete()
@@ -82,7 +80,6 @@ def perform_hard_delete(db: Session, email: str):
     db.query(models.ChatSession).filter((models.ChatSession.user1_email == email) | (models.ChatSession.user2_email == email)).delete()
     db.query(models.UserBlock).filter((models.UserBlock.blocker_email == email) | (models.UserBlock.blocked_email == email)).delete()
     
-    # 3. Wipe the user
     db.query(models.User).filter(models.User.email == email).delete()
     db.commit()
 
@@ -93,7 +90,6 @@ def run_background_tasks():
     try:
         now = get_ist_now()
         
-        # 1. DELETE OLD MEDIA (48 hours old)
         threshold_time = now - timedelta(hours=48)
         old_media_messages = db.query(models.Message).filter(
             models.Message.created_date <= threshold_time,
@@ -110,7 +106,6 @@ def run_background_tasks():
                 msg.content = "Media expired"
                 media_count += 1
 
-        # 2. CHECK VIP EXPIRY & APPLY PENALTY
         expired_vips = db.query(models.User).filter(
             models.User.is_vip == True,
             models.User.vip_expiry != None,
@@ -124,7 +119,6 @@ def run_background_tasks():
             user.total_likes = max(0, user.total_likes - 50)
             vip_count += 1
             
-        # 3. NAYA: 7-DAY PERMANENT DELETE (CRON)
         deactivate_threshold = now - timedelta(days=7)
         doomed_users = db.query(models.User).filter(
             models.User.deactivated == True,
@@ -156,7 +150,6 @@ async def startup_event():
 
 # ===============================================================
 
-# STREAMING VIDEO FIX
 def send_bytes_range_requests(file_path: str, start: int, end: int, chunk_size: int = 100 * 1024 * 1024):
     with open(file_path, "rb") as f:
         f.seek(start)
@@ -709,13 +702,16 @@ def share_post(post_id: int, payload: dict, db: Session = Depends(get_db)):
     db.commit()
     return {"status": "shared", "shares_count": post.shares_count}
 
-
+# NAYA: Dynamic Host Detection for Uploads
 @app.post("/api/upload")
-def upload_file(file: UploadFile = File(...)):
+def upload_file(request: Request, file: UploadFile = File(...)):
     file_location = f"uploads/{file.filename}"
     with open(file_location, "wb+") as file_object:
         shutil.copyfileobj(file.file, file_object)
-    return {"file_url": f"http://localhost:8000/uploads/{file.filename}"}
+        
+    # Ye auto-detect karega ki tu localhost pe hai ya Render par
+    base_url = str(request.base_url).rstrip("/")
+    return {"file_url": f"{base_url}/uploads/{file.filename}"}
 
 @app.delete("/api/messages/{id}")
 def delete_message(id: int, db: Session = Depends(get_db)):
