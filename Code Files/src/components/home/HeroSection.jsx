@@ -1,6 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { Zap, Users, Shield } from "lucide-react";
+import AdSlot from "../ui/AdSlot"; 
 
 export default function HeroSection() {
   return (
@@ -16,13 +17,8 @@ export default function HeroSection() {
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, ease: "easeOut" }}
-        className="relative z-10"
+        className="relative z-10 w-full flex flex-col items-center"
       >
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-light text-xs font-medium text-white/60 mb-6">
-          <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-          <span>2,847 strangers online right now</span>
-        </div>
-
         <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight leading-tight mb-6">
           <span className="text-white">Meet </span>
           <span className="gradient-text">Strangers</span>
@@ -35,7 +31,7 @@ export default function HeroSection() {
           Choose your preference and start talking.
         </p>
 
-        <div className="flex items-center justify-center gap-6 text-xs text-white/30">
+        <div className="flex items-center justify-center gap-6 text-xs text-white/30 mb-8">
           <div className="flex items-center gap-2">
             <Shield className="w-4 h-4" />
             <span>Anonymous</span>
@@ -49,6 +45,12 @@ export default function HeroSection() {
             <span>Free to Use</span>
           </div>
         </div>
+
+        {/* 🚀 BANNER AD SLOT */}
+        <div className="w-full max-w-sm mx-auto z-20">
+            <AdSlot type="banner" />
+        </div>
+
       </motion.div>
     </section>
   );

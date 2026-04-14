@@ -1,28 +1,26 @@
 import React, { useState, useEffect } from "react";
 import { getDailyLimit, getTodayString } from "../../utils/tiers";
 import { motion } from "framer-motion";
-import { MessageCircle, Video, Users, ArrowRight, Loader2, Lock } from "lucide-react";
+import { MessageCircle, Video, ArrowRight, Loader2, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { base44 } from "@/api/base44Client";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 
-export default function MatchFinder({ user }) {
+export default function MatchFinder({ user, onSearchingStateChange }) {
   const [mode, setMode] = useState("text");
   const [genderPref, setGenderPref] = useState("any");
   const [myGender, setMyGender] = useState(user?.gender || null);
   const [isSearching, setIsSearching] = useState(false);
+  
   const navigate = useNavigate();
 
-  // Limit Tracking Logic (Text & Video combined)
   const today = getTodayString();
   const matchesUsed = user?.last_match_reset === today ? (user?.matches_used_today || 0) : 0;
   const limit = getDailyLimit(user?.total_likes || 0, user?.is_vip || false);
   
-  // Agar limit poori ho gayi aur banda VIP nahi hai, toh filter lock ho jayega
   const isFilterLocked = matchesUsed >= limit && !user?.is_vip;
 
-  // Jab filter lock ho, toh automatically "Anyone" par shift kar do
   useEffect(() => {
     if (isFilterLocked && genderPref !== "any") {
       setGenderPref("any");
@@ -38,29 +36,25 @@ export default function MatchFinder({ user }) {
     if (!myGender) return;
 
     setIsSearching(true);
+    if (onSearchingStateChange) onSearchingStateChange(true); // Tell Home to speed up particles
 
-    // Save gender to user profile if not set
     if (!user.gender) {
       await base44.auth.updateMe({ gender: myGender });
     }
 
-    // Look for a waiting session that matches
     const waitingSessions = await base44.entities.ChatSession.filter({
       status: "waiting",
       mode: mode,
     });
 
-    // Find compatible session
     const compatible = waitingSessions.find((s) => {
       if (s.user1_email === user.email) return false;
-      // Check gender compatibility
       const theirPrefMatchesMe = s.gender_preference === "any" || s.gender_preference === myGender;
       const myPrefMatchesThem = genderPref === "any" || genderPref === s.user1_gender;
       return theirPrefMatchesMe && myPrefMatchesThem;
     });
 
     if (compatible) {
-      // Join existing session
       await base44.entities.ChatSession.update(compatible.id, {
         user2_email: user.email,
         user2_name: user.full_name || "Stranger",
@@ -76,7 +70,6 @@ export default function MatchFinder({ user }) {
         type: "system",
       });
 
-      // Increment match count
       await base44.auth.updateMe({
         matches_used_today: matchesUsed + 1,
         last_match_reset: today,
@@ -84,13 +77,11 @@ export default function MatchFinder({ user }) {
       navigate(createPageUrl("Chat") + `?session=${compatible.id}`);
       
     } else {
-      // GHOST SESSION CLEANUP: Agar purana koi waiting session fasa hai tera, toh usko pehle "ended" mark karo
       const myGhostSessions = waitingSessions.filter(s => s.user1_email === user.email);
       for (const ghost of myGhostSessions) {
         await base44.entities.ChatSession.update(ghost.id, { status: "ended" });
       }
 
-      // Create new waiting session
       const session = await base44.entities.ChatSession.create({
         user1_email: user.email,
         user1_name: user.full_name || "Stranger",
@@ -100,7 +91,6 @@ export default function MatchFinder({ user }) {
         gender_preference: genderPref,
       });
 
-      // Increment match count
       await base44.auth.updateMe({
         matches_used_today: matchesUsed + 1,
         last_match_reset: today,
@@ -109,6 +99,7 @@ export default function MatchFinder({ user }) {
     }
 
     setIsSearching(false);
+    if (onSearchingStateChange) onSearchingStateChange(false); // Reset particle speed
   };
 
   const genderOptions = [
