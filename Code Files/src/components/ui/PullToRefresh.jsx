@@ -29,7 +29,8 @@ export default function PullToRefresh({ onRefresh, children, className = "" }) {
 
     const handleTouchMove = (e) => {
       if (isRefreshingRef.current) return;
-      if (el.scrollTop > 0) return;
+      const currentScroll = window.scrollY || document.documentElement.scrollTop || el.scrollTop;
+      if (currentScroll > 0) return;
       const delta = e.touches[0].clientY - startY;
       if (delta > 0) {
         isPulling = true;
