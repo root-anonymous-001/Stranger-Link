@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/button";
 
 // Tu yahan se true/false karke easily test kar sakta hai. 
 // Baad me isko environment variable (jaise import.meta.env.VITE_DEV_MODE) se control karna best rahega.
-const DEV_MODE = false; 
+const DEV_MODE = true; 
 
 export default function AdSlot({ type = "banner", onAdComplete, onClose, isDevMode = DEV_MODE }) {
   const [adState, setAdState] = useState("loading"); // loading, ready, playing, finished
   const [dummyAdContent, setDummyAdContent] = useState(null);
+  return null
 
   useEffect(() => {
     // Simulate Ad Network Loading
