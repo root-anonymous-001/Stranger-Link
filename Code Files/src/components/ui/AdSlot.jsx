@@ -10,7 +10,7 @@ const DEV_MODE = true;
 export default function AdSlot({ type = "banner", onAdComplete, onClose, isDevMode = DEV_MODE }) {
   const [adState, setAdState] = useState("loading"); // loading, ready, playing, finished
   const [dummyAdContent, setDummyAdContent] = useState(null);
-  return null
+  return null //Comment this null statement to show adds
 
   useEffect(() => {
     // Simulate Ad Network Loading
