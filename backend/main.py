@@ -367,10 +367,10 @@ def forgot_password_otp(payload: dict, background_tasks: BackgroundTasks, db: Se
     email_parts = user.email.split('@')
     masked_email = user.email
     if len(email_parts) == 2:
-        name_part = email_parts[0]
-        domain_part = email_parts[1]
+        name_part = email_parts[0]   #or ye 0 tak hai [email: abhaysinghthakur50@gmail.com]
+        domain_part = email_parts[1]  #ye @se start hone wala hai
         if len(name_part) > 2:
-            masked_email = f"{name_part[0]}{'*' * (len(name_part)-2)}{name_part}@{domain_part}"
+            masked_email = f"{name_part[0]}{'*' * (len(name_part)-2)}{name_part[-1]}@{domain_part}"
         else:
             masked_email = f"{name_part[0]}*@{domain_part}"
 
