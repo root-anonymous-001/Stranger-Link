@@ -207,7 +207,7 @@ async def start_cron_job():
 
 @app.on_event("startup")
 async def startup_event():
-    async asyncio.create_task(start_cron_job())
+    asyncio.create_task(start_cron_job())
 
 def send_bytes_range_requests(file_path: str, start: int, end: int, chunk_size: int = 100 * 1024 * 1024):
     with open(file_path, "rb") as f:
@@ -386,8 +386,8 @@ def forgot_password_otp(payload: dict, background_tasks: BackgroundTasks, db: Se
     
     background_tasks.add_task(send_otp_email, user.email, otp)
     
-    # 🚀 NAYA: Using the Custom Masking Function (Start: 3 chars, End: 2 chars)
-    # Tu yahan numbers change kar sakta hai in future: mask_email(user.email, 4, 1) etc.
+    # 🚀 NAYA: Call the custom masking function with specific parameters
+    # Change these numbers to adjust the masking (e.g. 4, 1)
     masked_email = mask_email(user.email, start_chars=3, end_chars=2)
 
     return {"message": "Reset OTP sent to registered email", "masked_email": masked_email}
