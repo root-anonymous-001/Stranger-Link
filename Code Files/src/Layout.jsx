@@ -273,7 +273,7 @@ function AuthModal({ mode, setMode, onClose, onSuccess }) {
                     setResetStep(2);
                     const mEmail = data.masked_email || identifier;
                     setMaskedEmail(mEmail);
-                    setSuccessMsg(`Reset OTP sent to ${mEmail}`);
+                    setSuccessMsg(`Reset OTP sent to this registered E-mail ID: ${mEmail}`);
                 } else {
                     if (!otp || !password) throw new Error("Complete all fields");
                     const res = await fetch('https://stranger-link-kfr1.onrender.com/api/auth/reset-password', {
