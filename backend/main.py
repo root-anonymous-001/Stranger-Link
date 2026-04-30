@@ -333,6 +333,72 @@ def register(payload: dict, db: Session = Depends(get_db)):
     
     return {"access_token": new_user.email, "user": new_user}
 
+
+# ==========================================
+# 🚀 NAYA: FORGOT PASSWORD & RESET ROUTES
+# ==========================================
+
+@app.post("/api/auth/forgot-password-otp")
+def forgot_password_otp(payload: dict, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    identifier = payload.get("identifier")
+    
+    if not identifier:
+        raise HTTPException(status_code=400, detail="Email or Username required")
+        
+    # Check if user exists by email or username
+    user = db.query(models.User).filter(
+        (models.User.email == identifier) | (models.User.username == identifier)
+    ).first()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="Account not found with this email/username")
+        
+    # Generate OTP
+    otp = ''.join(random.choices(string.digits, k=6))
+    otp_store[user.email] = {
+        "otp": otp,
+        "expiry": get_ist_now() + timedelta(minutes=10)
+    }
+    
+    # Send Email via Background Task
+    background_tasks.add_task(send_otp_email, user.email, otp)
+    return {"message": "Reset OTP sent to registered email"}
+
+@app.post("/api/auth/reset-password")
+def reset_password(payload: dict, db: Session = Depends(get_db)):
+    identifier = payload.get("identifier")
+    otp = payload.get("otp")
+    new_password = payload.get("new_password")
+    
+    if not identifier or not otp or not new_password:
+        raise HTTPException(status_code=400, detail="Missing required fields")
+        
+    user = db.query(models.User).filter(
+        (models.User.email == identifier) | (models.User.username == identifier)
+    ).first()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    stored_otp_data = otp_store.get(user.email)
+    if not stored_otp_data:
+        raise HTTPException(status_code=400, detail="OTP not requested or expired.")
+    if stored_otp_data["otp"] != otp:
+        raise HTTPException(status_code=400, detail="Invalid Verification Code.")
+    if get_ist_now() > stored_otp_data["expiry"]:
+        del otp_store[user.email]
+        raise HTTPException(status_code=400, detail="OTP has expired. Request a new one.")
+        
+    # Hash new password and update
+    hashed_pw = get_password_hash(new_password)
+    user.password_hash = hashed_pw
+    db.commit()
+    
+    # Clear OTP from memory
+    del otp_store[user.email]
+    
+    return {"message": "Password reset successfully"}
+
 @app.post("/api/auth/firebase_login")
 def firebase_login(payload: dict, db: Session = Depends(get_db)):
      email = payload.get("email")
