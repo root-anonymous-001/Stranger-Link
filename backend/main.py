@@ -378,9 +378,9 @@ def forgot_password_otp(payload: dict, background_tasks: BackgroundTasks, db: Se
         name_part = email_parts[0]   #or ye 0=a tak hai [email: abhaysinghthakur50@gmail.com]
         domain_part = email_parts[1]  #ye 1=bse start hone wala hai
         if len(name_part) > 2:
-            masked_email = f"{name_part[3]}{'*' * (len(name_part)-2)}{name_part[-1]}@{domain_part}"
+            masked_email = f"{name_part[0]}{'*' * (len(name_part)-2)}{name_part[-1]}@{domain_part}"
         else:
-            masked_email = f"{name_part[3]}*@{domain_part}"
+            masked_email = f"{name_part[0]}*@{domain_part+2}"
 
     # Return the masked email in the response
     return {"message": "Reset OTP sent to registered email", "masked_email": masked_email}
