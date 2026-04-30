@@ -33,7 +33,7 @@ def verify_password(plain_password: str, hashed_password: str):
         return False
 
 # 🚀 NAYA: Configurable Masking Function
-def mask_email(email: str, start_chars: int = 3, end_chars: int = 2) -> str:
+def mask_email(email: str, start_chars: int = 0, end_chars: int = 5) -> str:
     """Masks an email. Example (3, 2): abhaysinghthakur50@gmail.com -> abh***50@gmail.com"""
     try:
         parts = email.split('@')
