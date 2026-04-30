@@ -233,8 +233,15 @@ function AuthModal({ mode, setMode, onClose, onSuccess }) {
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState("");
+    
+    // 🚀 NAYA: Forgot Password states for WEB
+    const [resetStep, setResetStep] = useState(1);
+    const [maskedEmail, setMaskedEmail] = useState("");
 
-    const resetForm = () => { setErrorMsg(""); setSuccessMsg(""); setShowOtpInput(false); setOtp(""); };
+    const resetForm = () => { 
+        setErrorMsg(""); setSuccessMsg(""); setShowOtpInput(false); 
+        setOtp(""); setResetStep(1); setMaskedEmail(""); 
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault(); setErrorMsg(""); setSuccessMsg(""); setLoading(true);
@@ -242,7 +249,7 @@ function AuthModal({ mode, setMode, onClose, onSuccess }) {
             if (mode === "login") {
                 await base44.auth.login(identifier, password);
                 onSuccess();
-            } else {
+            } else if (mode === "register") {
                 if (!showOtpInput) {
                     await base44.auth.sendOtp(email, username);
                     setShowOtpInput(true); setSuccessMsg("OTP has been sent to your email!");
@@ -251,8 +258,39 @@ function AuthModal({ mode, setMode, onClose, onSuccess }) {
                     await base44.auth.register({ email, username, full_name: fullName, dob, password, otp });
                     onSuccess();
                 }
+            } else if (mode === "forgot") {
+                if (resetStep === 1) {
+                    if (!identifier) throw new Error("Please enter email or username");
+                    
+                    const res = await fetch('https://stranger-link-kfr1.onrender.com/api/auth/forgot-password-otp', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ identifier })
+                    });
+                    const data = await res.json();
+                    if(!res.ok) throw new Error(data.detail);
+                    
+                    setResetStep(2);
+                    // 🚀 Fallback to identifier if backend is not updated yet
+                    const mEmail = data.masked_email || identifier;
+                    setMaskedEmail(mEmail);
+                    setSuccessMsg(`Reset OTP sent to ${mEmail}`);
+                } else {
+                    if (!otp || !password) throw new Error("Complete all fields");
+                    const res = await fetch('https://stranger-link-kfr1.onrender.com/api/auth/reset-password', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ identifier, otp, new_password: password })
+                    });
+                    if(!res.ok) throw new Error((await res.json()).detail);
+                    
+                    setSuccessMsg("Password reset successful. Please log in.");
+                    setTimeout(() => { setMode("login"); resetForm(); }, 2000);
+                }
             }
-        } catch (err) { setErrorMsg(err.response?.data?.detail || err.message || "Something went wrong."); } 
+        } catch (err) { 
+            setErrorMsg(err.message || "Something went wrong."); 
+        } 
         finally { setLoading(false); }
     };
 
@@ -272,9 +310,18 @@ function AuthModal({ mode, setMode, onClose, onSuccess }) {
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
                 <div className="text-center mb-6">
+                    {mode === 'forgot' && (
+                        <div className="w-16 h-16 rounded-full bg-indigo-500/20 flex items-center justify-center mx-auto mb-4">
+                           <KeyRound className="w-8 h-8 text-indigo-400" />
+                        </div>
+                    )}
                     <img src={logo} alt="StrangerLink Logo" className="logo w-14 h-14 object-contain mx-auto mb-3 drop-shadow-md relative z-10" />
-                    <h2 className="text-2xl font-bold text-white relative z-10">{mode === "login" ? "Welcome Back" : "Join StrangerLink"}</h2>
-                    <p className="text-white/40 text-xs mt-1 relative z-10">Connect with the world, anonymously.</p>
+                    <h2 className="text-2xl font-bold text-white relative z-10">
+                        {mode === "login" ? "Welcome Back" : mode === "register" ? "Join StrangerLink" : "Reset Access"}
+                    </h2>
+                    <p className="text-white/40 text-xs mt-1 relative z-10">
+                        {mode === "forgot" ? "Recover your secure account." : "Connect with the world, anonymously."}
+                    </p>
                 </div>
 
                 {errorMsg && <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-center relative z-10"><p className="text-red-400 text-xs font-semibold">{errorMsg}</p></div>}
@@ -282,12 +329,15 @@ function AuthModal({ mode, setMode, onClose, onSuccess }) {
 
                 <AnimatePresence mode="wait">
                     <motion.form key={mode} initial={{ opacity: 0, x: mode === "login" ? -20 : 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: mode === "login" ? 20 : -20 }} transition={{ duration: 0.2 }} onSubmit={handleSubmit} className="space-y-4 relative z-10">
-                        {mode === "login" ? (
+                        
+                        {mode === "login" && (
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><User className="h-4 w-4 text-white/30" /></div>
                                 <input type="text" required value={identifier} onChange={(e) => setIdentifier(e.target.value)} placeholder="Email or Username" className="w-full pl-11 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"/>
                             </div>
-                        ) : (
+                        )}
+
+                        {mode === "register" && (
                             <>
                                 <div className="relative">
                                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Mail className="h-4 w-4 text-white/30" /></div>
@@ -307,21 +357,55 @@ function AuthModal({ mode, setMode, onClose, onSuccess }) {
                                 </div>
                             </>
                         )}
-                        <div className="relative">
-                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><KeyRound className="h-4 w-4 text-white/30" /></div>
-                            <input type={showPassword ? "text" : "password"} required readOnly={showOtpInput} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" className={`w-full pl-11 pr-12 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all ${showOtpInput ? "opacity-50 cursor-not-allowed" : ""}`}/>
-                            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-4 flex items-center text-xl hover:scale-110 transition-transform">{showPassword ? "🐵" : "🙈"}</button>
-                        </div>
+
+                        {mode === "forgot" && (
+                            <>
+                                {resetStep === 1 ? (
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Mail className="h-4 w-4 text-white/30" /></div>
+                                        <input type="text" required value={identifier} onChange={(e) => setIdentifier(e.target.value)} placeholder="Email or Username" className="w-full pl-11 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"/>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className="relative">
+                                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><KeyRound className="h-4 w-4 text-white/30" /></div>
+                                            <input type="text" required value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="Enter 6-digit OTP" className="w-full pl-11 pr-4 py-3 bg-indigo-500/10 border border-indigo-500/30 rounded-xl text-white font-bold tracking-widest text-lg placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all" maxLength={6}/>
+                                        </div>
+                                    </>
+                                )}
+                            </>
+                        )}
+
+                        {(mode === "login" || mode === "register" || (mode === "forgot" && resetStep === 2)) && (
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><KeyRound className="h-4 w-4 text-white/30" /></div>
+                                <input type={showPassword ? "text" : "password"} required readOnly={showOtpInput} value={password} onChange={(e) => setPassword(e.target.value)} placeholder={mode === "forgot" ? "New Password" : "Password"} className={`w-full pl-11 pr-12 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all ${showOtpInput ? "opacity-50 cursor-not-allowed" : ""}`}/>
+                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-4 flex items-center text-xl hover:scale-110 transition-transform">{showPassword ? "🐵" : "🙈"}</button>
+                            </div>
+                        )}
+
                         <AnimatePresence>
-                            {showOtpInput && (
+                            {mode === "register" && showOtpInput && (
                                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="relative pt-2">
                                     <p className="text-xs text-indigo-300 font-semibold mb-2">Check your email for the 6-digit code</p>
                                     <input type="text" required value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="Enter OTP (e.g. 123456)" className="w-full text-center tracking-widest text-xl font-bold py-3 bg-indigo-500/10 border border-indigo-500/30 rounded-xl text-white placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all" maxLength={6}/>
                                 </motion.div>
                             )}
                         </AnimatePresence>
+
+                        {mode === 'login' && (
+                            <div className="flex justify-end">
+                                <button type="button" onClick={() => { setMode('forgot'); resetForm(); }} className="text-xs font-bold text-indigo-400 hover:underline">
+                                    Forgot Password?
+                                </button>
+                            </div>
+                        )}
+
                         <Button type="submit" disabled={loading} className="w-full h-12 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-bold shadow-lg shadow-purple-500/25 active:scale-95 transition-all">
-                            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (mode === "login" ? "Log In" : (!showOtpInput ? "Send Verification OTP" : "Verify & Create Account"))}
+                            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 
+                            (mode === "login" ? "Log In" : 
+                             mode === "register" ? (!showOtpInput ? "Send Verification OTP" : "Verify & Create Account") :
+                             (resetStep === 1 ? "Send Reset OTP" : "Reset Password"))}
                         </Button>
                     </motion.form>
                 </AnimatePresence>
@@ -338,7 +422,7 @@ function AuthModal({ mode, setMode, onClose, onSuccess }) {
                 </button>
 
                 <p className="text-center text-sm text-white/50 mt-6 relative z-10">
-                    {mode === "login" ? "Don't have an account? " : "Already have an account? "}
+                    {mode === "login" ? "Don't have an account? " : mode === "register" ? "Already have an account? " : "Remember your password? "}
                     <button onClick={() => { setMode(mode === "login" ? "register" : "login"); resetForm(); }} className="text-indigo-400 font-bold hover:underline">
                         {mode === "login" ? "Sign up here" : "Log in"}
                     </button>

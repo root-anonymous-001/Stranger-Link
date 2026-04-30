@@ -337,6 +337,9 @@ def register(payload: dict, db: Session = Depends(get_db)):
 # ==========================================
 # 🚀 NAYA: FORGOT PASSWORD & RESET ROUTES
 # ==========================================
+# ==========================================
+# 🚀 NAYA: FORGOT PASSWORD & RESET ROUTES
+# ==========================================
 
 @app.post("/api/auth/forgot-password-otp")
 def forgot_password_otp(payload: dict, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
@@ -345,7 +348,6 @@ def forgot_password_otp(payload: dict, background_tasks: BackgroundTasks, db: Se
     if not identifier:
         raise HTTPException(status_code=400, detail="Email or Username required")
         
-    # Check if user exists by email or username
     user = db.query(models.User).filter(
         (models.User.email == identifier) | (models.User.username == identifier)
     ).first()
@@ -353,17 +355,29 @@ def forgot_password_otp(payload: dict, background_tasks: BackgroundTasks, db: Se
     if not user:
         raise HTTPException(status_code=404, detail="Account not found with this email/username")
         
-    # Generate OTP
     otp = ''.join(random.choices(string.digits, k=6))
     otp_store[user.email] = {
         "otp": otp,
         "expiry": get_ist_now() + timedelta(minutes=10)
     }
     
-    # Send Email via Background Task
     background_tasks.add_task(send_otp_email, user.email, otp)
-    return {"message": "Reset OTP sent to registered email"}
+    
+    # 🚀 NAYA: MASK THE EMAIL FOR PRIVACY
+    email_parts = user.email.split('@')
+    masked_email = user.email
+    if len(email_parts) == 2:
+        name_part = email_parts[0]
+        domain_part = email_parts[1]
+        if len(name_part) > 2:
+            masked_email = f"{name_part[0]}{'*' * (len(name_part)-2)}{name_part[-1]}@{domain_part}"
+        else:
+            masked_email = f"{name_part[0]}*@{domain_part}"
 
+    # Return the masked email in the response
+    return {"message": "Reset OTP sent to registered email", "masked_email": masked_email}
+
+# (Baki ka code jaise reset_password same rahega)
 @app.post("/api/auth/reset-password")
 def reset_password(payload: dict, db: Session = Depends(get_db)):
     identifier = payload.get("identifier")
