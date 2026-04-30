@@ -32,6 +32,33 @@ def verify_password(plain_password: str, hashed_password: str):
     except Exception:
         return False
 
+# 🚀 NAYA: Configurable Masking Function
+def mask_email(email: str, start_chars: int = 3, end_chars: int = 2) -> str:
+    """Masks an email. Example (3, 2): abhaysinghthakur50@gmail.com -> abh***50@gmail.com"""
+    try:
+        parts = email.split('@')
+        if len(parts) != 2:
+            return email
+            
+        name_part = parts[0]
+        domain_part = parts[1]
+        
+        # Agar naam bohot chhota hai (jaise 'ab@gmail.com'), toh simple mask karo
+        if len(name_part) <= start_chars + end_chars:
+            return f"{name_part[0]}***@{domain_part}"
+            
+        # Extract starting and ending parts based on params
+        visible_start = name_part[:start_chars]
+        visible_end = name_part[-end_chars:] if end_chars > 0 else ""
+        
+        # Calculate how many stars to put in the middle
+        hidden_length = len(name_part) - start_chars - end_chars
+        stars = '*' * hidden_length
+        
+        return f"{visible_start}{stars}{visible_end}@{domain_part}"
+    except Exception:
+        return email # Fallback
+
 models.Base.metadata.create_all(bind=engine)
 app = FastAPI(title="Stranger Link API")
 
@@ -180,7 +207,7 @@ async def start_cron_job():
 
 @app.on_event("startup")
 async def startup_event():
-    asyncio.create_task(start_cron_job())
+    async asyncio.create_task(start_cron_job())
 
 def send_bytes_range_requests(file_path: str, start: int, end: int, chunk_size: int = 100 * 1024 * 1024):
     with open(file_path, "rb") as f:
@@ -333,10 +360,6 @@ def register(payload: dict, db: Session = Depends(get_db)):
     
     return {"access_token": new_user.email, "user": new_user}
 
-
-# ==========================================
-# 🚀 NAYA: FORGOT PASSWORD & RESET ROUTES
-# ==========================================
 # ==========================================
 # 🚀 NAYA: FORGOT PASSWORD & RESET ROUTES
 # ==========================================
@@ -363,29 +386,12 @@ def forgot_password_otp(payload: dict, background_tasks: BackgroundTasks, db: Se
     
     background_tasks.add_task(send_otp_email, user.email, otp)
     
+    # 🚀 NAYA: Using the Custom Masking Function (Start: 3 chars, End: 2 chars)
+    # Tu yahan numbers change kar sakta hai in future: mask_email(user.email, 4, 1) etc.
+    masked_email = mask_email(user.email, start_chars=3, end_chars=2)
 
-
-# email_parts = abhaysinghthakur50 
-# masked_email = abhaysinghthakur50@gmail.com
-# name_part = a
-# domain_part = b
-
-
-    # 🚀 NAYA: MASK THE EMAIL FOR PRIVACY  
-    email_parts = user.email.split('@')
-    masked_email = user.email
-    if len(email_parts) == 2:
-        name_part = email_parts[0]   #or ye 0=a tak hai [email: abhaysinghthakur50@gmail.com]
-        domain_part = email_parts[1]  #ye 1=bse start hone wala hai
-        if len(name_part) > 2:
-            masked_email = f"{name_part[0]}{'*' * (len(name_part)-2)}{name_part[-1]}@{domain_part}"
-        else:
-            masked_email = f"{name_part[0]}*@{domain_part+2}"
-
-    # Return the masked email in the response
     return {"message": "Reset OTP sent to registered email", "masked_email": masked_email}
 
-# (Baki ka code jaise reset_password same rahega)
 @app.post("/api/auth/reset-password")
 def reset_password(payload: dict, db: Session = Depends(get_db)):
     identifier = payload.get("identifier")

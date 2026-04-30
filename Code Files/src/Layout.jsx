@@ -325,7 +325,16 @@ function AuthModal({ mode, setMode, onClose, onSuccess }) {
                 </div>
 
                 {errorMsg && <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-center relative z-10"><p className="text-red-400 text-xs font-semibold">{errorMsg}</p></div>}
-                {successMsg && <div className="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-center relative z-10"><p className="text-emerald-400 text-xs font-semibold">{successMsg}</p></div>}
+                
+                {/* 🚀 NAYA: Sexy Success Message View for Web */}
+                {successMsg && (
+                  <div className="bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-xl mb-6 flex flex-col items-center relative z-10">
+                     <Mail className="w-6 h-6 text-emerald-400 mb-1" />
+                     <p className="text-emerald-300 text-xs text-center font-semibold mt-1 leading-5">
+                        {successMsg}
+                     </p>
+                  </div>
+                )}
 
                 <AnimatePresence mode="wait">
                     <motion.form key={mode} initial={{ opacity: 0, x: mode === "login" ? -20 : 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: mode === "login" ? 20 : -20 }} transition={{ duration: 0.2 }} onSubmit={handleSubmit} className="space-y-4 relative z-10">
