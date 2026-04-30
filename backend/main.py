@@ -88,6 +88,7 @@ def send_otp_email(receiver_email: str, otp: str):
     api_key = os.getenv("BREVO_API_KEY")
     sender_email = os.getenv("EMAIL_SENDER", "rootannymous469@gmail.com")
     
+   
     if not api_key:
         print(f"\n[DEV MODE] OTP for {receiver_email}: {otp}\n")
         return 
