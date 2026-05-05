@@ -412,7 +412,7 @@ def reset_password(payload: dict, db: Session = Depends(get_db)):
     stored_otp_data = otp_store.get(user.email)
     if not stored_otp_data:
         raise HTTPException(status_code=400, detail="OTP not requested or expired.")
-    if stored_otp_data["otp"] != otp:
+    if str(stored_otp_data["otp"]).strip() != str(otp).strip():
         raise HTTPException(status_code=400, detail="Invalid Verification Code.")
     if get_ist_now() > stored_otp_data["expiry"]:
         del otp_store[user.email]
